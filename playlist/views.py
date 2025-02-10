@@ -161,21 +161,27 @@ class SignupView(View):
         if User.objects.filter(username=username).exists():
             context = {
                 'status': 'error',
-                'message': " Username already exists!"
+                'message': " Username already exists!",
+                'username_error': "Username already exists!"
             }
-            return Response(context, status=status.HTTP_400_BAD_REQUEST)
+            template = loader.get_template('signup.html')
+            return HttpResponse(template.render(context, request))
         if User.objects.filter(email=email).exists():
             context = {
                 'status': 'error',
-                'message': "Username already exists!"
+                'message': "Username already exists!",
+                'email_error': "Username already exists!"
             }
-            return Response(context, status=status.HTTP_400_BAD_REQUEST)
+            template = loader.get_template('signup.html')
+            return HttpResponse(template.render(context, request))
         if password != confirm_password:
             context = {
                 'status': 'error',
-                'message': "Password cannot be confirmed!"
+                'message': "Password cannot be confirmed!",
+                'password_error': "Password cannot be confirmed!"
             }
-            return Response(context, status=status.HTTP_400_BAD_REQUEST)
+            template = loader.get_template('signup.html')
+            return HttpResponse(template.render(context, request))
 
         redirect_url = request.GET["next"] if "next" in request.GET else "/"
 
