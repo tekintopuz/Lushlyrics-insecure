@@ -1,0 +1,37 @@
+{% extends 'player.html' %}
+{% load static %}
+
+{% block css %}
+    <link rel="stylesheet" href="{% static 'main/search.css' %}">
+{% endblock %}
+
+{% block home %}
+{% endblock %}
+
+{% block search %}
+active
+{% endblock %}
+
+{% block main %}
+    <div class="homecontainer">
+        {% for playlist in CONTAINER %}
+        <div class="category">
+            <div class="cardContainer">
+                {% for card in playlist %}
+                <div class="card c1">
+                    <div class="albumcover">
+                        <img class="albumimg" src="{{ card.thumbnails.0 }}" alt="" srcset=""></img>
+                        <div class="albumplay" onclick='playSong("{{ card.id }}","none",true)'><img
+                                src="/media/icons/play.png"
+                                alt=""/></div>
+                    </div>
+                    <span class='label albumtitle bond-to-two-lines'>{{ card.title }}</span>
+                    <span class='label albumauthor bond-to-two-lines'>By {{ card.channel }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+{% endblock %}
