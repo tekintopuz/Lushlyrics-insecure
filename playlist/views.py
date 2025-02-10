@@ -3,12 +3,15 @@ import logging
 from django.contrib.auth import authenticate, logout
 from django.contrib.auth import login as auth_login
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.models import User
+from django.db.models import Q
 from django.http.response import HttpResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect
 from django.template import loader
 from django.views import View
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST
 from youtube_search import YoutubeSearch
 
 from core.settings import CONTAINER
@@ -104,22 +107,23 @@ class LoginView(View):
         username = request.POST['username']
         username = " ".join(username.lower().strip().split())
         password = request.POST['password']
-        user = authenticate(request, username=username, password=password)
-        if user and user.is_active:
-            auth_login(request, user)
-            request.session["status"] = "success",
-            request.session["message"] = "Login is successfull..."
+        user = User.objects.filter(Q(username=username)|Q(email=username)).first()
+        if user:
+            user = authenticate(request, username=username, password=password)
+            if user and user.is_active:
+                auth_login(request, user)
+                request.session["status"] = "success",
+                request.session["message"] = "Login is successfull..."
+                return redirect(redirect_url)
+            else:
+                context = {
+                    'status': 'error',
+                    'message': "Username or password is wrong!"}
+                template = loader.get_template('login.html')
+                return HttpResponse(template.render(context, request))
 
-
-            return redirect(redirect_url)
         else:
-            context = {
-                'status': 'error',
-                'message': "Username or password is mismatched"}
-            template = loader.get_template('login.html')
-            return HttpResponse(template.render(context, request))
-
-
+            raise HTTP_400_BAD_REQUEST
 class LogoutView(View):
     def get(self, request):
         try:
@@ -142,26 +146,45 @@ class SignupView(View):
             return HttpResponse(template.render(context, request))
 
     def post(self, request):
-        redirect_url = request.GET["next"] if "next" in request.GET else "/"
-        if redirect_url[0] != "/":
-            redirect_url = "/" + redirect_url
-
+        username = request.POST['username']
+        username = " ".join(username.lower().strip().split())
 
         email = request.POST['email']
         email = " ".join(email.lower().strip().split())
+
         password = request.POST['password']
-        user = authenticate(request, username=email, password=password)
-        if user and user.is_active:
-            auth_login(request, user)
-            request.session["status"] = "success",
-            request.session["message"] = "Giriş başarılı..."
-            return Response({
-                "status": "success",
-                "message": "Giriş başarılı...",
-                "redirect_url": redirect_url
-            })
-        else:
+        password = " ".join(password.lower().strip().split())
+
+        confirm_password = request.POST['confirm-password']
+        confirm_password = " ".join(confirm_password.lower().strip().split())
+
+        if User.objects.filter(username=username).exists():
             context = {
                 'status': 'error',
-                'message': "Kullanıcı Adı veya Şifre Eşleşmedi"}
+                'message': " Username already exists!"
+            }
             return Response(context, status=status.HTTP_400_BAD_REQUEST)
+        if User.objects.filter(email=email).exists():
+            context = {
+                'status': 'error',
+                'message': "Username already exists!"
+            }
+            return Response(context, status=status.HTTP_400_BAD_REQUEST)
+        if password != confirm_password:
+            context = {
+                'status': 'error',
+                'message': "Password cannot be confirmed!"
+            }
+            return Response(context, status=status.HTTP_400_BAD_REQUEST)
+
+        redirect_url = request.GET["next"] if "next" in request.GET else "/"
+
+        new_user = User.objects.create(email=email, username=username)
+        new_user.set_password(password)
+        new_user.save()
+
+        new_user = authenticate(request, username=new_user.username, password=password)
+        auth_login(request, new_user)
+        request.session["status"] = "success",
+        request.session["message"] = "Signup is successfull.."
+        return redirect(redirect_url)
